@@ -4,13 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ore Formazione Docenti – Stradilab</title>
+<link rel="icon" type="image/svg+xml" href="https://stradilab.org/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --cream: #faf6f0;
+    --cream: #f6f4ef;
     --accent: #9b2335;
-    --navy: #1B3A6B;
+    --navy: #2c4a6e;
     --text: #2a2a2a;
   }
 
@@ -18,7 +19,7 @@
 
   body {
     margin: 0;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     background-color: var(--cream);
     color: var(--text);
     min-height: 100vh;
@@ -35,7 +36,7 @@
   }
 
   .page-header .eyebrow {
-    font-family: 'DM Mono', monospace;
+    font-family: 'Space Grotesk', sans-serif;
     font-size: 12px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -44,7 +45,7 @@
   }
 
   .page-header h1 {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'Space Grotesk', sans-serif;
     font-weight: 600;
     font-size: 36px;
     color: var(--navy);
@@ -71,7 +72,7 @@
   .app-frame-bar {
     background-color: var(--navy);
     color: #fff;
-    font-family: 'DM Mono', monospace;
+    font-family: 'Space Grotesk', sans-serif;
     font-size: 11px;
     letter-spacing: 0.04em;
     padding: 10px 16px;
@@ -96,9 +97,16 @@
   .note strong {
     color: var(--navy);
   }
+
+/* Banda categoria Stradilab (colore legenda hp) */
+body::before{content:'';position:fixed;top:0;left:0;right:0;height:5px;background:#2c4a6e;z-index:3000;pointer-events:none;}
 </style>
 </head>
 <body>
+
+  <a href="https://stradilab.org" aria-label="Stradilab — home" style="display:block;margin-bottom:24px;">
+    <img src="https://stradilab.org/stradilab-logo-light.svg" alt="Stradilab" style="height:34px;width:auto;display:block;margin:0 auto;">
+  </a>
 
   <div class="page-header">
     <div class="eyebrow">Stradilab · Area Docenti</div>
