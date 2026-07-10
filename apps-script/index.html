@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root{
+    --cream:#f6f4ef;
+    --accent:#9b2335;
+    --navy:#2c4a6e;
+    --text:#2a2a2a;
+    --verde:#2e7d32;
+    --giallo:#e0a300;
+    --rosso:#c0392b;
+    --line:#e6ddd0;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Inter',system-ui,Arial,sans-serif;
+    background:var(--cream);
+    color:var(--text);
+    font-size:14px;
+    padding:18px 16px 28px;
+  }
+  h1,h2,.eyebrow,.tab,.big{font-family:'Space Grotesk','Inter',sans-serif;}
+
+  /* Banda colore categoria Stradilab */
+  body::before{content:'';position:fixed;top:0;left:0;right:0;height:5px;background:var(--navy);z-index:3000;}
+
+  .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:6px;}
+  h1{font-size:22px;color:var(--navy);margin:0 0 4px;font-weight:600;}
+  .lead{font-size:13px;color:#555;margin:0 0 16px;line-height:1.5;}
+
+  /* Tabs */
+  .tabs{display:flex;gap:6px;border-bottom:2px solid var(--line);margin-bottom:18px;}
+  .tab{background:none;border:none;padding:9px 14px;font-size:13px;font-weight:600;color:#888;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
+  .tab.active{color:var(--navy);border-bottom-color:var(--accent);}
+  .tab.hidden{display:none;}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* Form docente */
+  .field{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  input[type=text]{
+    flex:1;min-width:180px;padding:10px 12px;border:1px solid var(--line);
+    border-radius:8px;font-size:14px;font-family:inherit;background:#fff;
+  }
+  input[type=text]:focus{outline:none;border-color:var(--navy);}
+  button.btn{
+    background:var(--navy);color:#fff;border:none;border-radius:8px;
+    padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
+  }
+  button.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--navy);}
+  button.btn:disabled{opacity:.5;cursor:default;}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;box-shadow:0 3px 14px rgba(44,74,110,.06);}
+  .big{font-size:28px;font-weight:700;color:var(--navy);}
+  .bar{height:9px;background:#eee;border-radius:6px;overflow:hidden;margin:10px 0 6px;}
+  .bar > i{display:block;height:100%;background:var(--accent);}
+  .muted{font-size:12px;color:#777;}
+  .msg{font-size:13px;margin-top:12px;line-height:1.5;}
+  .msg.err{color:var(--rosso);}
+  .msg.ok{color:var(--verde);}
+
+  /* Dirigente */
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .stat{flex:1;min-width:90px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 12px;text-align:center;}
+  .stat b{display:block;font-size:20px;font-family:'Space Grotesk',sans-serif;color:var(--navy);}
+  .stat span{font-size:11px;color:#777;}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #eee;}
+  th{background:var(--navy);color:#fff;font-weight:600;font-size:12px;position:sticky;top:0;}
+  td.center,th.center{text-align:center;}
+  .tbl-wrap{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:9px;}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:middle;}
+  .dot.verde{background:var(--verde);}
+  .dot.giallo{background:var(--giallo);}
+  .dot.rosso{background:var(--rosso);}
+  .legend{font-size:11px;color:#777;margin-top:10px;line-height:1.7;}
+  .legend .dot{margin-right:4px;}
+  .spin{font-size:13px;color:#777;padding:18px 4px;}
+</style>
+</head>
+<body>
+
+  <div class="eyebrow">Stradilab · Formazione Docenti</div>
+  <h1>Ore di Formazione</h1>
+  <p class="lead">Consulta il totale delle ore registrate nel triennio (soglia minima <b>60 ore</b>).</p>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-docente" onclick="showView('docente')">Area docente</button>
+    <button class="tab hidden" id="tab-dirigente" onclick="showView('dirigente')">Vista dirigente</button>
+  </div>
+
+  <!-- ===================== AREA DOCENTE ===================== -->
+  <div class="view active" id="view-docente">
+    <div class="field">
+      <input type="text" id="cognome" placeholder="Il tuo cognome" onkeydown="if(event.key==='Enter')calcola()">
+      <button class="btn" id="btn-calcola" onclick="calcola()">Calcola ore</button>
+    </div>
+
+    <div class="card" id="risultato" style="display:none">
+      <div class="muted">Totale ore triennio</div>
+      <div class="big"><span id="tot">0</span> <span style="font-size:16px;color:#888">/ 60</span></div>
+      <div class="bar"><i id="barfill" style="width:0%"></i></div>
+      <div class="muted" id="stato"></div>
+      <div style="margin-top:14px">
+        <button class="btn ghost" id="btn-pdf" onclick="inviaPdf()">Invia riepilogo PDF via email</button>
+      </div>
+      <div class="msg" id="msg-docente"></div>
+    </div>
+
+    <div class="msg err" id="err-docente"></div>
+  </div>
+
+  <!-- ===================== VISTA DIRIGENTE ===================== -->
+  <div class="view" id="view-dirigente">
+    <div id="dir-loading" class="spin">Caricamento dati dal foglio risposte…</div>
+
+    <div id="dir-content" style="display:none">
+      <div class="stats">
+        <div class="stat"><b id="s-tot">0</b><span>Docenti</span></div>
+        <div class="stat"><b id="s-verde" style="color:var(--verde)">0</b><span>&gt; 60 ore</span></div>
+        <div class="stat"><b id="s-giallo" style="color:var(--giallo)">0</b><span>35–60 ore</span></div>
+        <div class="stat"><b id="s-rosso" style="color:var(--rosso)">0</b><span>&lt; 35 ore</span></div>
+      </div>
+
+      <div class="toolbar">
+        <input type="text" id="cerca" placeholder="Cerca docente…" oninput="filtra()" style="flex:1;min-width:160px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">
+        <button class="btn ghost" onclick="esportaCsv()">Esporta CSV</button>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="center" style="width:52px">Stato</th>
+              <th>Docente</th>
+              <th class="center" style="width:70px">Corsi</th>
+              <th class="center" style="width:90px">Ore</th>
+            </tr>
+          </thead>
+          <tbody id="dir-body"></tbody>
+        </table>
+      </div>
+
+      <div class="legend">
+        <span class="dot verde"></span>più di 60 ore &nbsp;·&nbsp;
+        <span class="dot giallo"></span>almeno 35 ore &nbsp;·&nbsp;
+        <span class="dot rosso"></span>meno di 35 ore
+        <br><span id="aggiornato"></span>
+      </div>
+    </div>
+
+    <div class="msg err" id="err-dirigente"></div>
+  </div>
+
+<script>
+  var datiDirigente = null;
+
+  // Mostra la tab dirigente solo agli account autorizzati.
+  google.script.run.withSuccessHandler(function(ok){
+    if(ok){ document.getElementById('tab-dirigente').classList.remove('hidden'); }
+  }).isDirigente();
+
+  function showView(v){
+    document.getElementById('tab-docente').classList.toggle('active', v==='docente');
+    document.getElementById('tab-dirigente').classList.toggle('active', v==='dirigente');
+    document.getElementById('view-docente').classList.toggle('active', v==='docente');
+    document.getElementById('view-dirigente').classList.toggle('active', v==='dirigente');
+    if(v==='dirigente' && !datiDirigente){ caricaDirigente(); }
+  }
+
+  /* ---------------- AREA DOCENTE ---------------- */
+  function calcola(){
+    var cognome = document.getElementById('cognome').value.trim();
+    var err = document.getElementById('err-docente');
+    err.textContent='';
+    document.getElementById('msg-docente').textContent='';
+    if(!cognome){ err.textContent='Inserisci il tuo cognome.'; return; }
+
+    var btn=document.getElementById('btn-calcola');
+    btn.disabled=true; btn.textContent='Calcolo…';
+
+    google.script.run
+      .withSuccessHandler(function(tot){
+        btn.disabled=false; btn.textContent='Calcola ore';
+        mostraRisultato(tot);
+      })
+      .withFailureHandler(function(e){
+        btn.disabled=false; btn.textContent='Calcola ore';
+        document.getElementById('risultato').style.display='none';
+        err.textContent = String(e && e.message ? e.message : e);
+      })
+      .getTrainingHours(cognome);
+  }
+
+  function mostraRisultato(tot){
+    tot = Number(tot)||0;
+    document.getElementById('tot').textContent = tot;
+    var pct = Math.min(100, Math.round(tot/60*100));
+    document.getElementById('barfill').style.width = pct+'%';
+    var stato = document.getElementById('stato');
+    if(tot>=60){ stato.textContent='Soglia minima del triennio raggiunta.'; stato.style.color='var(--verde)'; }
+    else { stato.textContent='Soglia minima del triennio: '+pct+'% (mancano '+(60-tot)+' ore).'; stato.style.color='var(--accent)'; }
+    document.getElementById('risultato').style.display='block';
+  }
+
+  function inviaPdf(){
+    var cognome = document.getElementById('cognome').value.trim();
+    var msg = document.getElementById('msg-docente');
+    var btn = document.getElementById('btn-pdf');
+    msg.className='msg'; msg.textContent='';
+    btn.disabled=true; btn.textContent='Invio in corso…';
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        btn.disabled=false; btn.textContent='Invia riepilogo PDF via email';
+        msg.className='msg ok'; msg.textContent=String(r);
+      })
+      .withFailureHandler(function(e){
+        btn.disabled=false; btn.textContent='Invia riepilogo PDF via email';
+        msg.className='msg err'; msg.textContent=String(e && e.message ? e.message : e);
+      })
+      .sendTrainingPdf(cognome);
+  }
+
+  /* ---------------- VISTA DIRIGENTE ---------------- */
+  function caricaDirigente(){
+    document.getElementById('dir-loading').style.display='block';
+    document.getElementById('err-dirigente').textContent='';
+    google.script.run
+      .withSuccessHandler(function(d){
+        datiDirigente = d;
+        document.getElementById('dir-loading').style.display='none';
+        document.getElementById('dir-content').style.display='block';
+        document.getElementById('s-tot').textContent   = d.stats.totale;
+        document.getElementById('s-verde').textContent = d.stats.verde;
+        document.getElementById('s-giallo').textContent= d.stats.giallo;
+        document.getElementById('s-rosso').textContent = d.stats.rosso;
+        document.getElementById('aggiornato').textContent = d.aggiornato ? 'Dati aggiornati al '+d.aggiornato : '';
+        renderTabella(d.docenti);
+      })
+      .withFailureHandler(function(e){
+        document.getElementById('dir-loading').style.display='none';
+        document.getElementById('err-dirigente').textContent = String(e && e.message ? e.message : e);
+      })
+      .getDirigenteData();
+  }
+
+  function renderTabella(docenti){
+    var body = document.getElementById('dir-body');
+    body.innerHTML = docenti.map(function(d){
+      return '<tr>'+
+        '<td class="center"><span class="dot '+d.stato+'" title="'+d.stato+'"></span></td>'+
+        '<td>'+escapeHtml(d.nome)+'</td>'+
+        '<td class="center">'+d.corsi+'</td>'+
+        '<td class="center"><b>'+d.ore+'</b></td>'+
+      '</tr>';
+    }).join('');
+  }
+
+  function filtra(){
+    if(!datiDirigente) return;
+    var q = document.getElementById('cerca').value.trim().toLowerCase();
+    renderTabella(datiDirigente.docenti.filter(function(d){
+      return d.nome.toLowerCase().indexOf(q)!==-1 || d.email.toLowerCase().indexOf(q)!==-1;
+    }));
+  }
+
+  function esportaCsv(){
+    if(!datiDirigente) return;
+    var righe = [['Docente','Email','Corsi','Ore totali','Stato']];
+    datiDirigente.docenti.forEach(function(d){
+      righe.push([d.nome, d.email, d.corsi, d.ore, d.stato]);
+    });
+    var csv = righe.map(function(r){
+      return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(',');
+    }).join('\n');
+    var a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);
+    a.download = 'formazione_quadro_dirigente.csv';
+    a.click();
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+</script>
+</body>
+</html>
