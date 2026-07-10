@@ -175,11 +175,11 @@ function sendTrainingPdf(cognome) {
 
    MailApp.sendEmail({
      to: emailDocente,
-     subject: "Riepilogo Ore di Formazione – Triennio",
+     subject: "Riepilogo Ore di Formazione – Triennio 2025/2028",
      htmlBody:
        "<p>Gentile " + nomeVisualizzato + ",</p>" +
        "<p>in allegato il riepilogo aggiornato delle ore di formazione registrate " +
-       "nel triennio, con il dettaglio dei corsi e il totale rispetto alla soglia minima di " +
+       "nel triennio 2025/2028, con il dettaglio dei corsi e il totale rispetto alla soglia minima di " +
        ORE_MINIME_TRIENNIO + " ore.</p>" +
        "<p>Istituto di Istruzione Superiore \"Antonio Stradivari\" – Cremona</p>",
      attachments: [blob],
@@ -311,7 +311,7 @@ function _buildPdfHtml_(nomeDocente, rows, totale) {
    </div>
 
 
-   <h1>Riepilogo Ore di Formazione – Triennio</h1>
+   <h1>Riepilogo Ore di Formazione – Triennio 2025/2028</h1>
    <div class="subtitle">Docente: ${nomeDocente}</div>
    <div class="info">Documento generato automaticamente il ${oggi}</div>
 
