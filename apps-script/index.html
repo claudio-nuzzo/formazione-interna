@@ -203,22 +203,22 @@
   var userEmail = null;
 
   /**
-   * Ascolta il postMessage dal parent (formazione-interna.stradilab.org).
-   * Quando riceve l'email, carica automaticamente i dati.
+   * All'avvio, legge il parametro ?email=... dall'URL (passato dal wrapper).
+   * Se presente, carica automaticamente i dati del docente.
+   * Altrimenti mostra un messaggio di attesa.
    */
-  window.addEventListener('message', function(event) {
-    // Verifica che il messaggio provenga dal dominio parent atteso
-    if (event.origin !== 'https://script.google.com') {
-      // Accetta messaggi da qualsiasi origine in produzione (l'iframe è cross-origin)
-    }
+  (function init() {
+    var params = new URLSearchParams(window.location.search);
+    var emailFromUrl = params.get('email');
 
-    if (event.data && event.data.type === 'GOOGLE_LOGIN' && event.data.email) {
-      userEmail = event.data.email;
+    if (emailFromUrl) {
+      userEmail = emailFromUrl.trim().toLowerCase();
       document.getElementById('login-overlay').classList.add('hidden');
       document.getElementById('main-content').style.display = 'block';
       caricaDatiDocente();
     }
-  });
+    // Altrimenti l'overlay "In attesa dell'accesso Google…" rimane visibile
+  })();
 
   /**
    * Carica i dati del docente via getMyTrainingData().

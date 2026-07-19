@@ -245,25 +245,13 @@
     }
 
     /**
-     * Passa l'email all'iframe interno dell'Apps Script.
-     * Usa postMessage + attende che l'iframe sia pronto.
+     * Passa l'email all'iframe ricaricandolo con il parametro ?email=...
+     * L'Apps Script la riceverà via doGet(e.parameter.email).
      */
     function sendEmailToIframe(email) {
-      const iframe = document.getElementById('app-iframe');
-
-      function post() {
-        iframe.contentWindow.postMessage(
-          { type: 'GOOGLE_LOGIN', email: email },
-          'https://script.google.com'
-        );
-      }
-
-      // L'iframe potrebbe non essere ancora caricato; riproviamo all'evento load
-      if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
-        post();
-      } else {
-        iframe.addEventListener('load', post, { once: true });
-      }
+      var iframe = document.getElementById('app-iframe');
+      var baseUrl = 'https://script.google.com/a/macros/istitutostradivari.it/s/AKfycbzH8ok_TAgAxESVgmLS7Z-8mRqUUzNAgrkqHwloRLe9red7h1JuT0f2tkN7adZ8eA3w/exec';
+      iframe.src = baseUrl + '?email=' + encodeURIComponent(email);
     }
   </script>
 </body>
