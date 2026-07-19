@@ -7,6 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="https://stradilab.org/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root {
     --cream: #f6f4ef;
@@ -98,11 +99,98 @@
     color: var(--navy);
   }
 
-/* Banda categoria Stradilab (colore legenda hp) */
-body::before{content:'';position:fixed;top:0;left:0;right:0;height:5px;background:#2c4a6e;z-index:3000;pointer-events:none;}
+  /* Banda categoria Stradilab (colore legenda hp) */
+  body::before{content:'';position:fixed;top:0;left:0;right:0;height:5px;background:#2c4a6e;z-index:3000;pointer-events:none;}
+
+  /* ── Google Login Overlay ── */
+  .login-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(246, 244, 239, 0.97);
+    z-index: 5000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .login-overlay.hidden { display: none; }
+
+  .login-card {
+    background: #fff;
+    border: 1px solid #e6ddd0;
+    border-radius: 12px;
+    padding: 36px 32px 28px;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 4px 24px rgba(44, 74, 110, 0.10);
+  }
+
+  .login-card h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    color: var(--navy);
+    margin: 0 0 8px;
+  }
+
+  .login-card p {
+    font-size: 13px;
+    color: #555;
+    margin: 0 0 22px;
+    line-height: 1.5;
+  }
+
+  .login-card .g_id_signin {
+    display: inline-block;
+  }
+
+  .login-error {
+    font-size: 12px;
+    color: #c0392b;
+    margin-top: 14px;
+    display: none;
+  }
+
+  .login-error.visible { display: block; }
 </style>
 </head>
 <body>
+
+  <!-- ==================== GOOGLE LOGIN OVERLAY ==================== -->
+  <div class="login-overlay" id="login-overlay">
+    <div class="login-card">
+      <h2>Accesso con Google</h2>
+      <p>
+        Per accedere alla pagina devi autenticarti con il tuo account
+        <strong>@istitutostradivari.it</strong>.
+      </p>
+
+      <!-- Google Identity Services: configurazione onload -->
+      <div id="g_id_onload"
+           data-client_id="465652157221-7utkqk1nq0avnh4caltbhibvbrd8eurp.apps.googleusercontent.com"
+           data-context="signin"
+           data-ux_mode="popup"
+           data-callback="handleCredentialResponse"
+           data-auto_prompt="false"
+           data-hd="istitutostradivari.it">
+      </div>
+
+      <!-- Pulsante "Accedi con Google" -->
+      <div class="g_id_signin"
+           data-type="standard"
+           data-size="large"
+           data-theme="outline"
+           data-text="signin_with"
+           data-shape="rectangular"
+           data-logo_alignment="left">
+      </div>
+
+      <div class="login-error" id="login-error">
+        Il tuo account non è autorizzato. Usa il tuo account @istitutostradivari.it.
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CONTENUTO PAGINA (come prima) ==================== -->
 
   <div style="text-align:center;margin-bottom:24px"><span class="stradilab-brand" data-theme="light" data-size="24px"></span></div>
 
@@ -132,5 +220,32 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:5px;backgroun
   </p>
 
   <script defer src="https://stradilab.org/stradilab-header.js"></script>
+
+  <!-- ==================== GOOGLE OAUTH HANDLER ==================== -->
+  <script>
+    /**
+     * Callback invocato da Google Identity Services dopo il login.
+     * Decodifica il JWT e verifica che l'email appartenga al dominio autorizzato.
+     */
+    function handleCredentialResponse(response) {
+      try {
+        const payload = JSON.parse(atob(response.credential.split('.')[1]));
+        const email = (payload.email || '').toLowerCase();
+
+        if (email.endsWith('@istitutostradivari.it')) {
+          // Login OK: nascondi l'overlay
+          document.getElementById('login-overlay').classList.add('hidden');
+          console.log('Google OAuth OK — account:', email);
+        } else {
+          // Dominio non autorizzato
+          document.getElementById('login-error').classList.add('visible');
+          google.accounts.id.disableAutoSelect();
+        }
+      } catch (e) {
+        console.error('Errore decodifica JWT Google:', e);
+        document.getElementById('login-error').classList.add('visible');
+      }
+    }
+  </script>
 </body>
 </html>

@@ -8,6 +8,18 @@
 *    sia il totale ore sia l'elenco dettagliato dei corsi.
 *  - sendTrainingPdf(cognome): genera un PDF istituzionale con l'elenco
 *    dei corsi e il totale ore, e lo invia via email al docente.
+*
+* Configurazione OAuth richiesta per il webapp:
+*   - Deployment > Esegui come: Utente che accede all'applicazione web
+*   - Deployment > Chi ha accesso: Chiunque disponga di un account Google
+*   - Scopes richiesti (in appsscript.json):
+*       https://www.googleapis.com/auth/userinfo.email
+*       https://www.googleapis.com/auth/spreadsheets
+*       https://www.googleapis.com/auth/script.send_mail
+*
+* Il dominio formazione-interna.stradilab.org deve essere aggiunto
+* come URI di reindirizzamento autorizzato nella Google Cloud Console
+* (APIs & Services > Credentials > OAuth 2.0 Client ID).
 */
 
 
@@ -353,10 +365,19 @@ function _buildPdfHtml_(nomeDocente, rows, totale) {
 * ============================================================
 */
 
-// Email dell'utente Google che sta usando la pagina (dominio istitutostradivari.it).
+// Email dell'utente Google che sta usando la pagina.
+// Verifica che appartenga al dominio @istitutostradivari.it.
 function getUtenteCorrente() {
- try { return String(Session.getActiveUser().getEmail() || ""); }
- catch (e) { return ""; }
+  try {
+    var email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase();
+    if (email && email.indexOf("@istitutostradivari.it") !== -1) {
+      return email;
+    }
+    return "";
+  } catch (e) {
+    Logger.log("getUtenteCorrente error: " + e.toString());
+    return "";
+  }
 }
 
 // true se l'utente collegato è tra gli ACCOUNT_DIRIGENTE.
