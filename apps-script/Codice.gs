@@ -139,14 +139,181 @@ function _findDocenteRows_(cognome) {
 * "Calcola ore" della pagina).
 */
 function getTrainingHours(cognome) {
- try {
-   const result = _findDocenteRows_(cognome);
-   let total = 0;
-   result.rows.forEach(r => { total += r.ore; });
-   return total;
- } catch (err) {
-   throw String(err);
- }
+  try {
+    const result = _findDocenteRows_(cognome);
+    let total = 0;
+    result.rows.forEach(r => { total += r.ore; });
+    return total;
+  } catch (err) {
+    throw String(err);
+  }
+}
+
+
+/**
+* NUOVO: Restituisce i dati di formazione per l'email loggata con Google.
+* Cerca direttamente per email invece che per cognome (privacy).
+* Restituisce un oggetto con: email, nome, totale, corsi (dettaglio),
+* e i dati per il dirigente se l'utente è autorizzato.
+*/
+function getMyTrainingData(email) {
+  try {
+    if (!email || String(email).trim() === "") {
+      throw "Email non fornita.";
+    }
+
+    var target = String(email).trim().toLowerCase();
+    if (target.indexOf("@istitutostradivari.it") === -1) {
+      throw "Solo account @istitutostradivari.it autorizzati.";
+    }
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheets()[0];
+    if (!sh) throw "Nessun foglio trovato nel file.";
+
+    var data = sh.getDataRange().getValues();
+    if (data.length < 2) {
+      return {
+        email: email,
+        nome: _nomeDaEmail_(email),
+        totale: 0,
+        corsi: [],
+        isDirigente: isDirigente(),
+        dirigenteData: null
+      };
+    }
+
+    var header = data[0].map(function(h) { return String(h).trim(); });
+    var emailIndex = header.indexOf(COL_EMAIL);
+    var annoIndex = header.indexOf(COL_ANNO);
+    var titoloIndex = header.indexOf(COL_TITOLO);
+    var oreIndex = header.indexOf(COL_ORE);
+
+    if (emailIndex === -1) throw "Colonna 'Indirizzo email' non trovata.";
+    if (oreIndex === -1) throw "Colonna ore non trovata.";
+
+    var corsi = [];
+    var totale = 0;
+
+    for (var i = 1; i < data.length; i++) {
+      var rowEmail = String(data[i][emailIndex] || "").trim().toLowerCase();
+      if (rowEmail === target) {
+        var ore = Number(data[i][oreIndex]);
+        if (isNaN(ore)) ore = 0;
+        corsi.push({
+          anno: annoIndex !== -1 ? String(data[i][annoIndex] || "") : "",
+          titolo: titoloIndex !== -1 ? String(data[i][titoloIndex] || "") : "",
+          ore: ore
+        });
+        totale += ore;
+      }
+    }
+
+    var risultato = {
+      email: email,
+      nome: _nomeDaEmail_(email),
+      totale: totale,
+      corsi: corsi,
+      isDirigente: isDirigente()
+    };
+
+    // Se è dirigente, includi anche i dati completi
+    if (risultato.isDirigente) {
+      try {
+        risultato.dirigenteData = getDirigenteData();
+      } catch (e) {
+        risultato.dirigenteData = null;
+      }
+    }
+
+    return risultato;
+
+  } catch (err) {
+    throw String(err);
+  }
+}
+
+
+/**
+* NUOVO: Genera e invia il PDF usando l'email invece del cognome.
+* Cerca i corsi associati esattamente all'indirizzo email fornito.
+*/
+function sendTrainingPdfByEmail(email) {
+  try {
+    if (!email || String(email).trim() === "") {
+      throw "Email non fornita.";
+    }
+
+    var target = String(email).trim().toLowerCase();
+    if (target.indexOf("@istitutostradivari.it") === -1) {
+      throw "Solo account @istitutostradivari.it autorizzati.";
+    }
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheets()[0];
+    if (!sh) throw "Nessun foglio trovato nel file.";
+
+    var data = sh.getDataRange().getValues();
+    if (data.length < 2) {
+      throw "Nessun corso trovato per l'account " + email + ".";
+    }
+
+    var header = data[0].map(function(h) { return String(h).trim(); });
+    var emailIndex = header.indexOf(COL_EMAIL);
+    var annoIndex = header.indexOf(COL_ANNO);
+    var titoloIndex = header.indexOf(COL_TITOLO);
+    var oreIndex = header.indexOf(COL_ORE);
+
+    if (emailIndex === -1) throw "Colonna 'Indirizzo email' non trovata.";
+    if (oreIndex === -1) throw "Colonna ore non trovata.";
+
+    var rows = [];
+    var totale = 0;
+
+    for (var i = 1; i < data.length; i++) {
+      var rowEmail = String(data[i][emailIndex] || "").trim().toLowerCase();
+      if (rowEmail === target) {
+        var ore = Number(data[i][oreIndex]);
+        if (isNaN(ore)) ore = 0;
+        rows.push({
+          email: data[i][emailIndex],
+          anno: annoIndex !== -1 ? String(data[i][annoIndex] || "") : "",
+          titolo: titoloIndex !== -1 ? String(data[i][titoloIndex] || "") : "",
+          ore: ore
+        });
+        totale += ore;
+      }
+    }
+
+    if (rows.length === 0) {
+      throw "Nessun corso trovato per l'account " + email + ".";
+    }
+
+    var nomeVisualizzato = _nomeDaEmail_(target);
+
+    var html = _buildPdfHtml_(nomeVisualizzato, rows, totale);
+    var blob = Utilities.newBlob(html, "text/html", "riepilogo.html")
+      .getAs("application/pdf")
+      .setName("Riepilogo_Ore_Formazione_" + nomeVisualizzato.replace(/ /g, "_") + ".pdf");
+
+    MailApp.sendEmail({
+      to: email,
+      subject: "Riepilogo Ore di Formazione – Triennio 2025/2028",
+      htmlBody:
+        "<p>Gentile " + nomeVisualizzato + ",</p>" +
+        "<p>in allegato il riepilogo aggiornato delle ore di formazione registrate " +
+        "nel triennio 2025/2028, con il dettaglio dei corsi e il totale rispetto alla soglia minima di " +
+        ORE_MINIME_TRIENNIO + " ore.</p>" +
+        "<p>Istituto di Istruzione Superiore \"Antonio Stradivari\" – Cremona</p>",
+      attachments: [blob],
+      name: "Stradilab – IIS Stradivari"
+    });
+
+    return "PDF inviato a " + email;
+
+  } catch (err) {
+    throw String(err);
+  }
 }
 
 

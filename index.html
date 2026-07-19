@@ -190,7 +190,7 @@
     </div>
   </div>
 
-  <!-- ==================== CONTENUTO PAGINA (come prima) ==================== -->
+  <!-- ==================== CONTENUTO PAGINA ==================== -->
 
   <div style="text-align:center;margin-bottom:24px"><span class="stradilab-brand" data-theme="light" data-size="24px"></span></div>
 
@@ -198,17 +198,16 @@
     <div class="eyebrow">Stradilab · Formazione Docenti · Triennio 2025/2028</div>
     <h1>Ore di Formazione</h1>
     <p>
-      Inserisci il tuo cognome per consultare il totale delle ore di formazione
-      registrate nel triennio 2025/2028. Puoi anche richiedere l'invio via email di un
-      riepilogo dettagliato in formato PDF. La <strong>Vista dirigente</strong>,
-      con il quadro complessivo di tutti i docenti, è riservata agli account
-      abilitati.
+      Le tue ore di formazione registrate nel triennio <strong>2025/2028</strong>
+      compaiono automaticamente dopo l'accesso con Google.
+      Puoi anche richiedere l'invio via email del riepilogo in formato PDF.
     </p>
   </div>
 
   <div class="app-frame-wrapper">
     <div class="app-frame-bar">RIEPILOGO ORE FORMAZIONE — TRIENNIO 2025/2028 · AREA DOCENTE / DIRIGENTE</div>
     <iframe
+      id="app-iframe"
       src="https://script.google.com/a/macros/istitutostradivari.it/s/AKfycbzH8ok_TAgAxESVgmLS7Z-8mRqUUzNAgrkqHwloRLe9red7h1JuT0f2tkN7adZ8eA3w/exec"
       title="Riepilogo Ore Formazione Docenti">
     </iframe>
@@ -216,7 +215,7 @@
 
   <p class="note">
     Il PDF, se richiesto, viene inviato direttamente all'indirizzo email istituzionale
-    associato al cognome inserito — <strong>non è scaricabile da questa pagina</strong>.
+    associato al tuo account — <strong>non è scaricabile da questa pagina</strong>.
   </p>
 
   <script defer src="https://stradilab.org/stradilab-header.js"></script>
@@ -225,7 +224,7 @@
   <script>
     /**
      * Callback invocato da Google Identity Services dopo il login.
-     * Decodifica il JWT e verifica che l'email appartenga al dominio autorizzato.
+     * Decodifica il JWT, verifica il dominio, e passa l'email all'iframe.
      */
     function handleCredentialResponse(response) {
       try {
@@ -233,17 +232,37 @@
         const email = (payload.email || '').toLowerCase();
 
         if (email.endsWith('@istitutostradivari.it')) {
-          // Login OK: nascondi l'overlay
           document.getElementById('login-overlay').classList.add('hidden');
-          console.log('Google OAuth OK — account:', email);
+          sendEmailToIframe(email);
         } else {
-          // Dominio non autorizzato
           document.getElementById('login-error').classList.add('visible');
           google.accounts.id.disableAutoSelect();
         }
       } catch (e) {
         console.error('Errore decodifica JWT Google:', e);
         document.getElementById('login-error').classList.add('visible');
+      }
+    }
+
+    /**
+     * Passa l'email all'iframe interno dell'Apps Script.
+     * Usa postMessage + attende che l'iframe sia pronto.
+     */
+    function sendEmailToIframe(email) {
+      const iframe = document.getElementById('app-iframe');
+
+      function post() {
+        iframe.contentWindow.postMessage(
+          { type: 'GOOGLE_LOGIN', email: email },
+          'https://script.google.com'
+        );
+      }
+
+      // L'iframe potrebbe non essere ancora caricato; riproviamo all'evento load
+      if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+        post();
+      } else {
+        iframe.addEventListener('load', post, { once: true });
       }
     }
   </script>

@@ -42,20 +42,7 @@
   .view{display:none;}
   .view.active{display:block;}
 
-  /* Form docente */
-  .field{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
-  input[type=text]{
-    flex:1;min-width:180px;padding:10px 12px;border:1px solid var(--line);
-    border-radius:8px;font-size:14px;font-family:inherit;background:#fff;
-  }
-  input[type=text]:focus{outline:none;border-color:var(--navy);}
-  button.btn{
-    background:var(--navy);color:#fff;border:none;border-radius:8px;
-    padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
-  }
-  button.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--navy);}
-  button.btn:disabled{opacity:.5;cursor:default;}
-
+  /* Card docente */
   .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;box-shadow:0 3px 14px rgba(44,74,110,.06);}
   .big{font-size:28px;font-weight:700;color:var(--navy);}
   .bar{height:9px;background:#eee;border-radius:6px;overflow:hidden;margin:10px 0 6px;}
@@ -64,6 +51,30 @@
   .msg{font-size:13px;margin-top:12px;line-height:1.5;}
   .msg.err{color:var(--rosso);}
   .msg.ok{color:var(--verde);}
+
+  button.btn{
+    background:var(--navy);color:#fff;border:none;border-radius:8px;
+    padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
+  }
+  button.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--navy);}
+  button.btn:disabled{opacity:.5;cursor:default;}
+
+  /* Login overlay (interno all'iframe, come fallback) */
+  .login-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    text-align: center;
+    padding: 40px 20px;
+  }
+  .login-overlay.hidden { display: none; }
+
+  .login-waiting {
+    font-size: 14px;
+    color: #777;
+  }
+  .login-waiting b { color: var(--navy); }
 
   /* Dirigente */
   .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
@@ -83,6 +94,12 @@
   .legend{font-size:11px;color:#777;margin-top:10px;line-height:1.7;}
   .legend .dot{margin-right:4px;}
   .spin{font-size:13px;color:#777;padding:18px 4px;}
+
+  /* Dettaglio corsi */
+  .corsi-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 12px; }
+  .corsi-table th { background: #f0ece6; color: var(--navy); font-size: 11px; padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--line); }
+  .corsi-table td { padding: 6px 8px; border-bottom: 1px solid #f0ece6; }
+  .corsi-table td.ore { text-align: center; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -91,205 +108,251 @@
   <h1>Ore di Formazione</h1>
   <p class="lead">Consulta il totale delle ore registrate nel triennio <b>2025/2028</b> (soglia minima <b>60 ore</b>).</p>
 
-  <div class="tabs">
-    <button class="tab active" id="tab-docente" onclick="showView('docente')">Area docente</button>
-    <button class="tab hidden" id="tab-dirigente" onclick="showView('dirigente')">Vista dirigente</button>
+  <!-- OVERLAY: in attesa dell'email dal parent -->
+  <div class="login-overlay" id="login-overlay">
+    <div class="login-waiting">
+      <b>In attesa dell'accesso Google…</b>
+      <br><br>Devi autenticarti con il tuo account <b>@istitutostradivari.it</b><br>per visualizzare le tue ore di formazione.
+      <br><br><small style="color:#aaa">Se il login non compare, ricarica la pagina.</small>
+    </div>
   </div>
 
-  <!-- ===================== AREA DOCENTE ===================== -->
-  <div class="view active" id="view-docente">
-    <div class="field">
-      <input type="text" id="cognome" placeholder="Il tuo cognome" onkeydown="if(event.key==='Enter')calcola()">
-      <button class="btn" id="btn-calcola" onclick="calcola()">Calcola ore</button>
+  <!-- TABS (nascoste finché non arriva l'email) -->
+  <div id="main-content" style="display:none">
+    <div class="tabs">
+      <button class="tab active" id="tab-docente" onclick="showView('docente')">Area docente</button>
+      <button class="tab hidden" id="tab-dirigente" onclick="showView('dirigente')">Vista dirigente</button>
     </div>
 
-    <div class="card" id="risultato" style="display:none">
-      <div class="muted">Totale ore triennio</div>
-      <div class="big"><span id="tot">0</span> <span style="font-size:16px;color:#888">/ 60</span></div>
-      <div class="bar"><i id="barfill" style="width:0%"></i></div>
-      <div class="muted" id="stato"></div>
-      <div style="margin-top:14px">
-        <button class="btn ghost" id="btn-pdf" onclick="inviaPdf()">Invia riepilogo PDF via email</button>
+    <!-- =============== AREA DOCENTE =============== -->
+    <div class="view active" id="view-docente">
+      <div class="card" id="risultato">
+        <div class="muted">Benvenuto, <span id="nome-docente" style="font-weight:600;color:var(--navy)">Docente</span></div>
+        <div style="margin-top:14px">
+          <div class="muted">Totale ore triennio</div>
+          <div class="big"><span id="tot">0</span> <span style="font-size:16px;color:#888">/ 60</span></div>
+          <div class="bar"><i id="barfill" style="width:0%"></i></div>
+          <div class="muted" id="stato"></div>
+        </div>
+
+        <!-- Dettaglio corsi -->
+        <div id="dettaglio-corsi" style="margin-top:16px;">
+          <div class="muted" style="font-weight:600;margin-bottom:8px;color:var(--navy);">Dettaglio corsi:</div>
+          <div style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:8px;">
+            <table class="corsi-table">
+              <thead><tr><th>Anno</th><th>Titolo</th><th class="ore">Ore</th></tr></thead>
+              <tbody id="corsi-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <button class="btn ghost" id="btn-pdf" onclick="inviaPdf()">Invia riepilogo PDF via email</button>
+        </div>
+        <div class="msg" id="msg-docente"></div>
       </div>
-      <div class="msg" id="msg-docente"></div>
+
+      <div class="msg err" id="err-docente"></div>
     </div>
 
-    <div class="msg err" id="err-docente"></div>
-  </div>
+    <!-- =============== VISTA DIRIGENTE =============== -->
+    <div class="view" id="view-dirigente">
+      <div id="dir-loading" class="spin">Caricamento dati dal foglio risposte…</div>
 
-  <!-- ===================== VISTA DIRIGENTE ===================== -->
-  <div class="view" id="view-dirigente">
-    <div id="dir-loading" class="spin">Caricamento dati dal foglio risposte…</div>
+      <div id="dir-content" style="display:none">
+        <div class="stats">
+          <div class="stat"><b id="s-tot">0</b><span>Docenti</span></div>
+          <div class="stat"><b id="s-verde" style="color:var(--verde)">0</b><span>> 60 ore</span></div>
+          <div class="stat"><b id="s-giallo" style="color:var(--giallo)">0</b><span>35–60 ore</span></div>
+          <div class="stat"><b id="s-rosso" style="color:var(--rosso)">0</b><span>< 35 ore</span></div>
+        </div>
 
-    <div id="dir-content" style="display:none">
-      <div class="stats">
-        <div class="stat"><b id="s-tot">0</b><span>Docenti</span></div>
-        <div class="stat"><b id="s-verde" style="color:var(--verde)">0</b><span>&gt; 60 ore</span></div>
-        <div class="stat"><b id="s-giallo" style="color:var(--giallo)">0</b><span>35–60 ore</span></div>
-        <div class="stat"><b id="s-rosso" style="color:var(--rosso)">0</b><span>&lt; 35 ore</span></div>
+        <div class="toolbar">
+          <input type="text" id="cerca" placeholder="Cerca docente…" oninput="filtra()" style="flex:1;min-width:160px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">
+          <button class="btn ghost" onclick="esportaCsv()">Esporta CSV</button>
+        </div>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="center" style="width:52px">Stato</th>
+                <th>Docente</th>
+                <th class="center" style="width:70px">Corsi</th>
+                <th class="center" style="width:90px">Ore</th>
+              </tr>
+            </thead>
+            <tbody id="dir-body"></tbody>
+          </table>
+        </div>
+
+        <div class="legend">
+          <span class="dot verde"></span>più di 60 ore &nbsp;·&nbsp;
+          <span class="dot giallo"></span>almeno 35 ore &nbsp;·&nbsp;
+          <span class="dot rosso"></span>meno di 35 ore
+          <br><span id="aggiornato"></span>
+        </div>
       </div>
 
-      <div class="toolbar">
-        <input type="text" id="cerca" placeholder="Cerca docente…" oninput="filtra()" style="flex:1;min-width:160px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;">
-        <button class="btn ghost" onclick="esportaCsv()">Esporta CSV</button>
-      </div>
-
-      <div class="tbl-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th class="center" style="width:52px">Stato</th>
-              <th>Docente</th>
-              <th class="center" style="width:70px">Corsi</th>
-              <th class="center" style="width:90px">Ore</th>
-            </tr>
-          </thead>
-          <tbody id="dir-body"></tbody>
-        </table>
-      </div>
-
-      <div class="legend">
-        <span class="dot verde"></span>più di 60 ore &nbsp;·&nbsp;
-        <span class="dot giallo"></span>almeno 35 ore &nbsp;·&nbsp;
-        <span class="dot rosso"></span>meno di 35 ore
-        <br><span id="aggiornato"></span>
-      </div>
+      <div class="msg err" id="err-dirigente"></div>
     </div>
-
-    <div class="msg err" id="err-dirigente"></div>
   </div>
 
 <script>
   var datiDirigente = null;
+  var userEmail = null;
 
-  // Mostra la tab dirigente solo agli account autorizzati.
-  google.script.run.withSuccessHandler(function(ok){
-    if(ok){ document.getElementById('tab-dirigente').classList.remove('hidden'); }
-  }).isDirigente();
+  /**
+   * Ascolta il postMessage dal parent (formazione-interna.stradilab.org).
+   * Quando riceve l'email, carica automaticamente i dati.
+   */
+  window.addEventListener('message', function(event) {
+    // Verifica che il messaggio provenga dal dominio parent atteso
+    if (event.origin !== 'https://script.google.com') {
+      // Accetta messaggi da qualsiasi origine in produzione (l'iframe è cross-origin)
+    }
 
-  function showView(v){
-    document.getElementById('tab-docente').classList.toggle('active', v==='docente');
-    document.getElementById('tab-dirigente').classList.toggle('active', v==='dirigente');
-    document.getElementById('view-docente').classList.toggle('active', v==='docente');
-    document.getElementById('view-dirigente').classList.toggle('active', v==='dirigente');
-    if(v==='dirigente' && !datiDirigente){ caricaDirigente(); }
+    if (event.data && event.data.type === 'GOOGLE_LOGIN' && event.data.email) {
+      userEmail = event.data.email;
+      document.getElementById('login-overlay').classList.add('hidden');
+      document.getElementById('main-content').style.display = 'block';
+      caricaDatiDocente();
+    }
+  });
+
+  /**
+   * Carica i dati del docente via getMyTrainingData().
+   */
+  function caricaDatiDocente() {
+    if (!userEmail) return;
+
+    google.script.run
+      .withSuccessHandler(function(data) {
+        mostraRisultato(data.totale, data.corsi, data.nome);
+
+        // Mostra la tab dirigente se autorizzato
+        if (data.isDirigente) {
+          document.getElementById('tab-dirigente').classList.remove('hidden');
+          datiDirigente = data.dirigenteData;
+          if (datiDirigente) {
+            renderDirigente(datiDirigente);
+          }
+        }
+      })
+      .withFailureHandler(function(e) {
+        document.getElementById('err-docente').textContent = String(e && e.message ? e.message : e);
+      })
+      .getMyTrainingData(userEmail);
   }
 
   /* ---------------- AREA DOCENTE ---------------- */
-  function calcola(){
-    var cognome = document.getElementById('cognome').value.trim();
-    var err = document.getElementById('err-docente');
-    err.textContent='';
-    document.getElementById('msg-docente').textContent='';
-    if(!cognome){ err.textContent='Inserisci il tuo cognome.'; return; }
-
-    var btn=document.getElementById('btn-calcola');
-    btn.disabled=true; btn.textContent='Calcolo…';
-
-    google.script.run
-      .withSuccessHandler(function(tot){
-        btn.disabled=false; btn.textContent='Calcola ore';
-        mostraRisultato(tot);
-      })
-      .withFailureHandler(function(e){
-        btn.disabled=false; btn.textContent='Calcola ore';
-        document.getElementById('risultato').style.display='none';
-        err.textContent = String(e && e.message ? e.message : e);
-      })
-      .getTrainingHours(cognome);
-  }
-
-  function mostraRisultato(tot){
-    tot = Number(tot)||0;
+  function mostraRisultato(tot, corsi, nome) {
+    tot = Number(tot) || 0;
+    document.getElementById('nome-docente').textContent = nome || '';
     document.getElementById('tot').textContent = tot;
-    var pct = Math.min(100, Math.round(tot/60*100));
-    document.getElementById('barfill').style.width = pct+'%';
+    var pct = Math.min(100, Math.round(tot / 60 * 100));
+    document.getElementById('barfill').style.width = pct + '%';
     var stato = document.getElementById('stato');
-    if(tot>=60){ stato.textContent='Soglia minima del triennio raggiunta.'; stato.style.color='var(--verde)'; }
-    else { stato.textContent='Soglia minima del triennio: '+pct+'% (mancano '+(60-tot)+' ore).'; stato.style.color='var(--accent)'; }
-    document.getElementById('risultato').style.display='block';
+    if (tot >= 60) {
+      stato.textContent = 'Soglia minima del triennio raggiunta.';
+      stato.style.color = 'var(--verde)';
+    } else {
+      stato.textContent = 'Soglia minima del triennio: ' + pct + '% (mancano ' + (60 - tot) + ' ore).';
+      stato.style.color = 'var(--accent)';
+    }
+
+    // Popola tabella corsi
+    var tbody = document.getElementById('corsi-body');
+    if (corsi && corsi.length > 0) {
+      tbody.innerHTML = corsi.map(function(c) {
+        return '<tr>' +
+          '<td>' + escapeHtml(c.anno || '-') + '</td>' +
+          '<td>' + escapeHtml(c.titolo || '-') + '</td>' +
+          '<td class="ore">' + c.ore + '</td>' +
+        '</tr>';
+      }).join('');
+    } else {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;">Nessun corso registrato</td></tr>';
+    }
   }
 
-  function inviaPdf(){
-    var cognome = document.getElementById('cognome').value.trim();
+  function inviaPdf() {
+    if (!userEmail) return;
     var msg = document.getElementById('msg-docente');
     var btn = document.getElementById('btn-pdf');
-    msg.className='msg'; msg.textContent='';
-    btn.disabled=true; btn.textContent='Invio in corso…';
+    msg.className = 'msg'; msg.textContent = '';
+    btn.disabled = true; btn.textContent = 'Invio in corso…';
 
     google.script.run
-      .withSuccessHandler(function(r){
-        btn.disabled=false; btn.textContent='Invia riepilogo PDF via email';
-        msg.className='msg ok'; msg.textContent=String(r);
+      .withSuccessHandler(function(r) {
+        btn.disabled = false; btn.textContent = 'Invia riepilogo PDF via email';
+        msg.className = 'msg ok'; msg.textContent = String(r);
       })
-      .withFailureHandler(function(e){
-        btn.disabled=false; btn.textContent='Invia riepilogo PDF via email';
-        msg.className='msg err'; msg.textContent=String(e && e.message ? e.message : e);
+      .withFailureHandler(function(e) {
+        btn.disabled = false; btn.textContent = 'Invia riepilogo PDF via email';
+        msg.className = 'msg err'; msg.textContent = String(e && e.message ? e.message : e);
       })
-      .sendTrainingPdf(cognome);
+      .sendTrainingPdfByEmail(userEmail);
+  }
+
+  /* ---------------- TABS ---------------- */
+  function showView(v) {
+    document.getElementById('tab-docente').classList.toggle('active', v === 'docente');
+    document.getElementById('tab-dirigente').classList.toggle('active', v === 'dirigente');
+    document.getElementById('view-docente').classList.toggle('active', v === 'docente');
+    document.getElementById('view-dirigente').classList.toggle('active', v === 'dirigente');
   }
 
   /* ---------------- VISTA DIRIGENTE ---------------- */
-  function caricaDirigente(){
-    document.getElementById('dir-loading').style.display='block';
-    document.getElementById('err-dirigente').textContent='';
-    google.script.run
-      .withSuccessHandler(function(d){
-        datiDirigente = d;
-        document.getElementById('dir-loading').style.display='none';
-        document.getElementById('dir-content').style.display='block';
-        document.getElementById('s-tot').textContent   = d.stats.totale;
-        document.getElementById('s-verde').textContent = d.stats.verde;
-        document.getElementById('s-giallo').textContent= d.stats.giallo;
-        document.getElementById('s-rosso').textContent = d.stats.rosso;
-        document.getElementById('aggiornato').textContent = d.aggiornato ? 'Dati aggiornati al '+d.aggiornato : '';
-        renderTabella(d.docenti);
-      })
-      .withFailureHandler(function(e){
-        document.getElementById('dir-loading').style.display='none';
-        document.getElementById('err-dirigente').textContent = String(e && e.message ? e.message : e);
-      })
-      .getDirigenteData();
+  function renderDirigente(d) {
+    document.getElementById('dir-loading').style.display = 'none';
+    document.getElementById('dir-content').style.display = 'block';
+    document.getElementById('s-tot').textContent   = d.stats.totale;
+    document.getElementById('s-verde').textContent = d.stats.verde;
+    document.getElementById('s-giallo').textContent = d.stats.giallo;
+    document.getElementById('s-rosso').textContent = d.stats.rosso;
+    document.getElementById('aggiornato').textContent = d.aggiornato ? 'Dati aggiornati al ' + d.aggiornato : '';
+    renderTabella(d.docenti);
   }
 
-  function renderTabella(docenti){
+  function renderTabella(docenti) {
     var body = document.getElementById('dir-body');
-    body.innerHTML = docenti.map(function(d){
-      return '<tr>'+
-        '<td class="center"><span class="dot '+d.stato+'" title="'+d.stato+'"></span></td>'+
-        '<td>'+escapeHtml(d.nome)+'</td>'+
-        '<td class="center">'+d.corsi+'</td>'+
-        '<td class="center"><b>'+d.ore+'</b></td>'+
+    body.innerHTML = docenti.map(function(d) {
+      return '<tr>' +
+        '<td class="center"><span class="dot ' + d.stato + '" title="' + d.stato + '"></span></td>' +
+        '<td>' + escapeHtml(d.nome) + '</td>' +
+        '<td class="center">' + d.corsi + '</td>' +
+        '<td class="center"><b>' + d.ore + '</b></td>' +
       '</tr>';
     }).join('');
   }
 
-  function filtra(){
-    if(!datiDirigente) return;
+  function filtra() {
+    if (!datiDirigente) return;
     var q = document.getElementById('cerca').value.trim().toLowerCase();
-    renderTabella(datiDirigente.docenti.filter(function(d){
-      return d.nome.toLowerCase().indexOf(q)!==-1 || d.email.toLowerCase().indexOf(q)!==-1;
+    renderTabella(datiDirigente.docenti.filter(function(d) {
+      return d.nome.toLowerCase().indexOf(q) !== -1 || d.email.toLowerCase().indexOf(q) !== -1;
     }));
   }
 
-  function esportaCsv(){
-    if(!datiDirigente) return;
-    var righe = [['Docente','Email','Corsi','Ore totali','Stato']];
-    datiDirigente.docenti.forEach(function(d){
+  function esportaCsv() {
+    if (!datiDirigente) return;
+    var righe = [['Docente', 'Email', 'Corsi', 'Ore totali', 'Stato']];
+    datiDirigente.docenti.forEach(function(d) {
       righe.push([d.nome, d.email, d.corsi, d.ore, d.stato]);
     });
-    var csv = righe.map(function(r){
-      return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(',');
+    var csv = righe.map(function(r) {
+      return r.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',');
     }).join('\n');
     var a = document.createElement('a');
-    a.href = 'data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);
+    a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
     a.download = 'formazione_quadro_dirigente.csv';
     a.click();
   }
 
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g,function(c){
-      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return {'&': '&', '<': '<', '>': '>', '"': '"', "'": '&#39;'}[c];
     });
   }
 </script>
