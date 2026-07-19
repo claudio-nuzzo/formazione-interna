@@ -204,13 +204,11 @@
     </p>
   </div>
 
-  <div class="app-frame-wrapper">
+  <div class="app-frame-wrapper" id="app-frame-wrapper">
     <div class="app-frame-bar">RIEPILOGO ORE FORMAZIONE — TRIENNIO 2025/2028 · AREA DOCENTE / DIRIGENTE</div>
-    <iframe
-      id="app-iframe"
-      src="https://script.google.com/a/macros/istitutostradivari.it/s/AKfycbzH8ok_TAgAxESVgmLS7Z-8mRqUUzNAgrkqHwloRLe9red7h1JuT0f2tkN7adZ8eA3w/exec"
-      title="Riepilogo Ore Formazione Docenti">
-    </iframe>
+    <div id="iframe-placeholder" style="height:720px;display:flex;align-items:center;justify-content:center;background:#fff;color:#999;font-size:14px;">
+      Effettua l'accesso con Google per visualizzare le tue ore.
+    </div>
   </div>
 
   <p class="note">
@@ -245,13 +243,16 @@
     }
 
     /**
-     * Passa l'email all'iframe ricaricandolo con il parametro ?email=...
-     * L'Apps Script la riceverà via doGet(e.parameter.email).
+     * Crea l'iframe SOLO dopo il login, direttamente con l'URL che include l'email.
+     * Così l'Apps Script riceve subito il parametro e carica i dati automaticamente.
      */
     function sendEmailToIframe(email) {
-      var iframe = document.getElementById('app-iframe');
       var baseUrl = 'https://script.google.com/a/macros/istitutostradivari.it/s/AKfycbzH8ok_TAgAxESVgmLS7Z-8mRqUUzNAgrkqHwloRLe9red7h1JuT0f2tkN7adZ8eA3w/exec';
-      iframe.src = baseUrl + '?email=' + encodeURIComponent(email);
+      var iframeUrl = baseUrl + '?email=' + encodeURIComponent(email);
+
+      // Rimuovi il placeholder e crea l'iframe
+      var placeholder = document.getElementById('iframe-placeholder');
+      placeholder.innerHTML = '<iframe id="app-iframe" src="' + iframeUrl + '" style="width:100%;height:720px;border:none;display:block;" title="Riepilogo Ore Formazione Docenti"></iframe>';
     }
   </script>
 </body>
