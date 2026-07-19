@@ -72,7 +72,16 @@ function autorizza() {
 
 
 function doGet(e) {
- return HtmlService.createHtmlOutputFromFile('index')
+ // L'email arriva come parametro URL (?email=...) dalla pagina wrapper.
+ // Va letta QUI lato server e iniettata nel template: la pagina servita da
+ // HtmlService gira in un iframe sandbox su googleusercontent.com, dove
+ // window.location.search NON contiene i parametri dell'URL /exec.
+ var email = (e && e.parameter && e.parameter.email) ? String(e.parameter.email).trim() : "";
+
+ var t = HtmlService.createTemplateFromFile('index');
+ t.emailServer = email;
+ return t.evaluate()
+   .setTitle('Ore Formazione Docenti – Stradilab')
    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 

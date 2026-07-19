@@ -208,8 +208,11 @@
    * Altrimenti mostra un messaggio di attesa.
    */
   (function init() {
+    // 1) Email iniettata lato server da doGet (metodo affidabile).
+    // 2) Fallback: parametro URL (funziona solo fuori dal sandbox HtmlService).
+    var emailFromServer = "<?= emailServer ?>";
     var params = new URLSearchParams(window.location.search);
-    var emailFromUrl = params.get('email');
+    var emailFromUrl = emailFromServer || params.get('email');
 
     if (emailFromUrl) {
       userEmail = emailFromUrl.trim().toLowerCase();
